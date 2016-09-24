@@ -1,5 +1,6 @@
 library(dplyr)
 library(lubridate)
+library(ggplot2)
 
 ### FINANCIAL ANALYSIS FOR CHASE TRANSACTION HISTORY ######
 # This script reads in a file such as the one that is 
@@ -56,7 +57,7 @@ get_location_types <- function(locations,
 f <- read.csv('~/Documents/Financial/Chase8805_Activity_20160923.CSV') %>%
   filter(Type == 'Sale') %>%
   mutate(Trans.Date=parse_date_time(Trans.Date, orders='mdy')) %>%
-  mutate(Trans.Date = week(Trans.Date))
+  mutate(week = as.Date(paste("1", week(Trans.Date), year(Trans.Date), sep = "-"), format = "%w-%W-%Y"))
 
 # GET AND SAVE THE LOCATION TYPES
 location_types <- get_location_types(f$Description)
@@ -69,9 +70,12 @@ for (i in names(location_types)){
 }
 
 # SUMMARIZE INTO A SINGLE COLUMN
-f$place <- as.character(apply(f[, 8:ncol(f)], 1, function(x) names(x)[x]))
+f$place <- as.character(apply(f[, 9:ncol(f)], 1, function(x) names(x)[x]))
 
 # SHOW SPENDING BY LOCATION TYPE
 f %>% group_by(place) %>% summarise(cost = sum(-Amount)) %>% arrange(desc(cost))
 
+# Plot Spending over Time
+f %>% group_by(week) %>% summarise(cost = sum(-Amount, na.rm=T)) %>% ggplot(aes(x=week, y=cost)) + geom_line()
 
+f %>% group_by(week, place) %>% summarise(cost = sum(-Amount, na.rm=T)) %>% ggplot(aes(x=week, y=cost, group=place, color=place)) + geom_line()
